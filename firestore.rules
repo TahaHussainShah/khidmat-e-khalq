@@ -1,0 +1,65 @@
+// firestore.rules
+// Deploy with: firebase deploy --only firestore:rules
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helper functions ────────────────────────────────────────
+    function isSignedIn()       { return request.auth != null; }
+    function isOwner(uid)       { return request.auth.uid == uid; }
+    function getUserRole()      {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    function isMainAdmin()      { return getUserRole() == 'main_admin'; }
+    function isDeptAdmin()      { return getUserRole() == 'department_admin'; }
+    function getUserDept()      {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.departmentId;
+    }
+
+    // ── users collection ────────────────────────────────────────
+    match /users/{uid} {
+      // Anyone signed in can read their own profile
+      allow read:   if isSignedIn() && (isOwner(uid) || isMainAdmin());
+      // User can create their own profile on registration
+      allow create: if isSignedIn() && isOwner(uid);
+      // User can update their own profile; main admin can update any
+      allow update: if isSignedIn() && (isOwner(uid) || isMainAdmin());
+      allow delete: if isMainAdmin();
+    }
+
+    // ── complaints collection ────────────────────────────────────
+    match /complaints/{complaintId} {
+      // Public read — anyone can see the map
+      allow read: if true;
+
+      // Only signed-in users can create
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'Pending';
+
+      // Owner can update only while still Pending (edit before processing)
+      // Dept admin can update status + notes for their department
+      // Main admin can update anything
+      allow update: if isSignedIn() && (
+        isMainAdmin()
+        || (isOwner(resource.data.userId) && resource.data.status == 'Pending')
+        || (isDeptAdmin() && resource.data.departmentId == getUserDept())
+      );
+
+      // Owner can delete only if Pending; main admin can delete anything
+      allow delete: if isSignedIn() && (
+        isMainAdmin()
+        || (isOwner(resource.data.userId) && resource.data.status == 'Pending')
+      );
+    }
+
+    // ── departments collection ────────────────────────────────────
+    match /departments/{deptId} {
+      // Public read — needed for routing logic on client
+      allow read: if true;
+      // Only main admin can write
+      allow write: if isSignedIn() && isMainAdmin();
+    }
+  }
+}

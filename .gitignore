@@ -1,5 +1,6 @@
 .env.local
 serviceAccountKey.json
+serviceAccountKey.json.json
 node_modules
 .next
 

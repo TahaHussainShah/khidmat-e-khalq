@@ -5,6 +5,7 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
 import { getUserProfile } from '@/lib/firestore'
+import { clearAuthCookies, syncAuthCookies } from '@/lib/auth'
 
 const AuthContext = createContext(null)
 
@@ -12,25 +13,25 @@ export function AuthProvider({ children }) {
   const [user,    setUser]    = useState(null)
   const [profile, setProfile] = useState(null)  // Firestore profile (includes role)
   const [loading, setLoading] = useState(true)
-
-  const clearAuthCookie = () => {
-    document.cookie = 'auth-token=; path=/; max-age=0'
-  }
+  const isVerified = Boolean(
+    user && (user.emailVerified || user.providerData?.some(provider => provider.providerId === 'google.com'))
+  )
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser)
       try {
         if (firebaseUser) {
+          syncAuthCookies(firebaseUser)
           const p = await getUserProfile(firebaseUser.uid)
           setProfile(p)
         } else {
-          clearAuthCookie()
+          clearAuthCookies()
           setProfile(null)
         }
       } catch (err) {
         console.error('Auth profile load failed:', err)
-        clearAuthCookie()
+        clearAuthCookies()
         setProfile(null)
       } finally {
         setLoading(false)
@@ -40,7 +41,7 @@ export function AuthProvider({ children }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading }}>
+    <AuthContext.Provider value={{ user, profile, loading, isVerified }}>
       {children}
     </AuthContext.Provider>
   )

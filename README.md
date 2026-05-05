@@ -3,6 +3,16 @@
 
 A full-stack **Next.js** web application allowing citizens to report civic problems and track their resolution. Built with Firebase for authentication and database.
 
+## Recent Updates
+
+- Unified authentication into a single `/login` page with a sliding Login/Register switch.
+- Removed phone authentication completely from the user flow and from the Firebase setup instructions.
+- Added email verification for password-based accounts with a dedicated `/verify-email` page.
+- Kept Google sign-in as a supported provider and treated Google accounts as already verified.
+- Updated route protection so `/dashboard`, `/report-issue`, and `/admin` require a signed-in, verified user.
+- Simplified the navbar to a single Login button when signed out and an account menu when signed in.
+- Updated the landing page CTAs to point to `/login` and to fetch live statistics from the API routes.
+
 ---
 
 ## 🚀 Quick Start
@@ -20,7 +30,7 @@ npm install
 3. Enable **Authentication** → Sign-in methods:
    - Email/Password ✓
    - Google ✓
-   - Phone ✓
+   - Phone ✗ (disabled in this project)
 4. Go to **Project Settings → Your Apps → Web App** → Copy config
 
 ### 3. Environment Variables
@@ -60,8 +70,9 @@ npm run dev
 khidmat-e-khalq/
 ├── app/                    # Next.js App Router pages + API routes
 │   ├── page.js             # Landing page
-│   ├── login/              # Login page
-│   ├── register/           # Registration + OTP
+│   ├── login/              # Unified login/register page
+│   ├── register/           # Redirects to /login
+│   ├── verify-email/       # Email verification screen
 │   ├── dashboard/          # User complaint dashboard
 │   ├── report-issue/       # Complaint submission form
 │   ├── map/                # Public map view
@@ -115,11 +126,33 @@ After the user registers via the app:
 
 ## 🔒 Security
 
-- Firebase Auth handles all authentication (JWT tokens)
+- Firebase Auth handles all authentication state and providers
+- Password accounts must verify their email before accessing protected pages
+- Google accounts are treated as verified because Firebase marks them as trusted OAuth users
 - Firestore security rules enforce role-based access at the database level
 - Users can only modify their own Pending complaints
 - Department admins can only update complaints in their department
 - Main admin has full write access
+
+---
+
+## 🔐 Authentication Flow
+
+The current auth flow is intentionally simple:
+
+1. New users go to `/login` and switch to Register inside the same page.
+2. Email/password registration creates the Firestore profile and sends a verification email.
+3. Unverified password users are redirected to `/verify-email` before using protected features.
+4. Google sign-in skips the verification step and enters the app directly.
+5. `/register` is kept only as a redirect to `/login` for backward compatibility.
+
+The following routes are protected by both client checks and middleware:
+
+- `/dashboard`
+- `/report-issue`
+- `/admin`
+
+If a user is signed out, they are redirected to `/login`. If they are signed in but not verified, they are redirected to `/verify-email`.
 
 ---
 

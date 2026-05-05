@@ -9,7 +9,7 @@ import { STATUSES } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 
 export default function DashboardPage() {
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading: authLoading, isVerified } = useAuth()
   const router = useRouter()
 
   const [complaints, setComplaints] = useState([])
@@ -17,13 +17,20 @@ export default function DashboardPage() {
   const [filter,     setFilter]     = useState('All')
 
   useEffect(() => {
-    if (!authLoading && !user) { router.push('/login'); return }
-    if (user) {
-      getUserComplaints(user.uid)
-        .then(setComplaints)
-        .finally(() => setLoading(false))
+    if (authLoading) return
+    if (!user) {
+      router.replace('/login?from=/dashboard')
+      return
     }
-  }, [user, authLoading]) // eslint-disable-line
+    if (!isVerified) {
+      router.replace('/verify-email?from=/dashboard')
+      return
+    }
+
+    getUserComplaints(user.uid)
+      .then(setComplaints)
+      .finally(() => setLoading(false))
+  }, [user, authLoading, isVerified, router])
 
   const handleDelete = async (id) => {
     if (!confirm('Delete this complaint? This cannot be undone.')) return

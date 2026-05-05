@@ -21,7 +21,7 @@ const INITIAL = {
 }
 
 export default function ReportIssuePage() {
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading: authLoading, isVerified } = useAuth()
   const router = useRouter()
 
   const [form,    setForm]    = useState(INITIAL)
@@ -29,10 +29,17 @@ export default function ReportIssuePage() {
   const [saving,  setSaving]  = useState(false)
   const [success, setSuccess] = useState(false)
 
-  // Redirect if not logged in
+  // Redirect if not logged in or email not verified
   useEffect(() => {
-    if (!authLoading && !user) router.push('/login?from=/report-issue')
-  }, [user, authLoading]) // eslint-disable-line
+    if (authLoading) return
+    if (!user) {
+      router.replace('/login?from=/report-issue')
+      return
+    }
+    if (!isVerified) {
+      router.replace('/verify-email?from=/report-issue')
+    }
+  }, [user, authLoading, isVerified, router])
 
   const set = (key, value) => setForm(p => ({ ...p, [key]: value }))
 

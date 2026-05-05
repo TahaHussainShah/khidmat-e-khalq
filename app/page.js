@@ -1,12 +1,22 @@
 // app/page.js — Landing page
-import Link from 'next/link'
+'use client'
 
-const STATS = [
-  { label: 'Issues Reported', value: '2,400+' },
-  { label: 'Resolved',        value: '1,890+'  },
-  { label: 'Departments',     value: '5'        },
-  { label: 'Active Users',    value: '800+'     },
+import Link from 'next/link'
+import { useEffect, useState } from 'react'
+
+const FALLBACK_STATS = [
+  { label: 'Issues Reported', value: 2400 },
+  { label: 'Resolved',        value: 1890 },
+  { label: 'Departments',     value: 5 },
+  { label: 'Active Users',    value: 800 },
 ]
+
+const numberFormatter = new Intl.NumberFormat('en-US')
+
+function formatStatValue(value, addPlus = false) {
+  const formatted = numberFormatter.format(value)
+  return addPlus ? `${formatted}+` : formatted
+}
 
 const CATEGORIES = [
   { icon: '🗑️', label: 'Garbage',           desc: 'Dump sites, overflowing bins' },
@@ -25,6 +35,53 @@ const HOW_IT_WORKS = [
 ]
 
 export default function HomePage() {
+  const [stats, setStats] = useState(FALLBACK_STATS)
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    async function loadStats() {
+      try {
+        const [complaintsRes, departmentsRes, usersRes] = await Promise.allSettled([
+          fetch('/api/complaints', { signal: controller.signal, cache: 'no-store' }),
+          fetch('/api/departments', { signal: controller.signal, cache: 'no-store' }),
+          fetch('/api/users', { signal: controller.signal, cache: 'no-store' }),
+        ])
+
+        const parseJson = async (result) => {
+          if (result.status !== 'fulfilled' || !result.value.ok) return null
+          return result.value.json()
+        }
+
+        const [complaintsJson, departmentsJson, usersJson] = await Promise.all([
+          parseJson(complaintsRes),
+          parseJson(departmentsRes),
+          parseJson(usersRes),
+        ])
+
+        const complaints = complaintsJson?.data
+        const departments = departmentsJson?.data
+        const users = usersJson?.data
+
+        const resolvedCount = Array.isArray(complaints)
+          ? complaints.filter(c => c.status === 'Resolved').length
+          : FALLBACK_STATS[1].value
+
+        setStats([
+          { label: 'Issues Reported', value: Array.isArray(complaints) ? complaints.length : FALLBACK_STATS[0].value },
+          { label: 'Resolved', value: resolvedCount },
+          { label: 'Departments', value: Array.isArray(departments) ? departments.length : FALLBACK_STATS[2].value },
+          { label: 'Active Users', value: Array.isArray(users) ? users.length : FALLBACK_STATS[3].value },
+        ])
+      } catch (error) {
+        // Keep fallback stats when API is unavailable.
+      }
+    }
+
+    loadStats()
+    return () => controller.abort()
+  }, [])
+
   return (
     <div className="overflow-hidden">
 
@@ -53,7 +110,7 @@ export default function HomePage() {
             complaint directly to the responsible department — and keeps you updated until it is resolved.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/register" className="btn-primary text-base px-8 py-3">
+            <Link href="/login" className="btn-primary text-base px-8 py-3">
               Report an Issue
             </Link>
             <Link href="/map" className="btn-secondary text-base px-8 py-3 !text-brand-lime !border-brand-lime">
@@ -66,9 +123,11 @@ export default function HomePage() {
       {/* ── Stats strip ───────────────────────────────────────── */}
       <section className="bg-brand-green py-10">
         <div className="page-wrapper grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
-          {STATS.map(s => (
+          {stats.map(s => (
             <div key={s.label}>
-              <p className="font-display text-4xl font-bold text-white">{s.value}</p>
+              <p className="font-display text-4xl font-bold text-white">
+                {formatStatValue(s.value, s.label !== 'Departments')}
+              </p>
               <p className="text-green-100 text-sm mt-1">{s.label}</p>
             </div>
           ))}
@@ -118,7 +177,7 @@ export default function HomePage() {
         <p className="text-gray-500 max-w-xl mx-auto mb-8">
           Your report reaches the right department instantly. Together we make our city better.
         </p>
-        <Link href="/register" className="btn-primary text-base px-10 py-3">
+        <Link href="/login" className="btn-primary text-base px-10 py-3">
           Get Started — It's Free
         </Link>
       </section>

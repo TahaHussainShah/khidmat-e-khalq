@@ -1,33 +1,49 @@
 // middleware.js — Next.js edge middleware for route protection
-// NOTE: Firebase Auth tokens are validated client-side in this setup.
-// This middleware handles basic redirect flows; per-page auth checks use useAuth() hook.
+// This middleware reads auth cookies synced from Firebase client state.
 
 import { NextResponse } from 'next/server'
 
 const PROTECTED_ROUTES = ['/dashboard', '/report-issue', '/admin']
-const AUTH_ROUTES      = ['/login', '/register']
+const AUTH_ROUTES = ['/login', '/register']
+const VERIFICATION_ROUTE = '/verify-email'
+
+function isRouteMatch(pathname, routes) {
+  return routes.some(route => pathname === route || pathname.startsWith(`${route}/`))
+}
 
 export function middleware(request) {
   const { pathname } = request.nextUrl
-
-  // Auth token stored in cookie by client after login
   const token = request.cookies.get('auth-token')?.value
+  const verified = request.cookies.get('auth-verified')?.value === '1'
 
-  // Redirect logged-in users away from login/register
-  if (token && AUTH_ROUTES.some(r => pathname.startsWith(r))) {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
-  }
+  const isProtectedRoute = isRouteMatch(pathname, PROTECTED_ROUTES)
+  const isAuthRoute = isRouteMatch(pathname, AUTH_ROUTES)
+  const isVerificationRoute = isRouteMatch(pathname, [VERIFICATION_ROUTE])
 
-  // Redirect unauthenticated users from protected routes
-  if (!token && PROTECTED_ROUTES.some(r => pathname.startsWith(r))) {
+  if (!token && (isProtectedRoute || isVerificationRoute)) {
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('from', pathname)
     return NextResponse.redirect(loginUrl)
+  }
+
+  if (token && !verified) {
+    if (isVerificationRoute) return NextResponse.next()
+
+    if (isProtectedRoute || isAuthRoute) {
+      const verifyUrl = new URL('/verify-email', request.url)
+      verifyUrl.searchParams.set('from', pathname)
+      return NextResponse.redirect(verifyUrl)
+    }
+  }
+
+  if (token && verified && (isAuthRoute || isVerificationRoute)) {
+    const from = request.nextUrl.searchParams.get('from')
+    return NextResponse.redirect(new URL(from || '/dashboard', request.url))
   }
 
   return NextResponse.next()
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/report-issue/:path*', '/admin/:path*', '/login', '/register'],
+  matcher: ['/dashboard/:path*', '/report-issue/:path*', '/admin/:path*', '/login', '/register', '/verify-email'],
 }

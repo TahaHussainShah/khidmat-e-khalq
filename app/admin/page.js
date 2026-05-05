@@ -10,7 +10,7 @@ import StatusBadge from '@/components/StatusBadge/StatusBadge'
 import { formatDate } from '@/lib/utils'
 
 export default function AdminPage() {
-  const { user, profile, loading: authLoading } = useAuth()
+  const { user, profile, loading: authLoading, isVerified } = useAuth()
   const router = useRouter()
 
   const [complaints,   setComplaints]   = useState([])
@@ -28,15 +28,23 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (authLoading) return
-    if (!user || !['department_admin', 'main_admin'].includes(profile?.role)) {
-      router.push('/dashboard')
+    if (!user) {
+      router.replace('/login?from=/admin')
+      return
+    }
+    if (!isVerified) {
+      router.replace('/verify-email?from=/admin')
+      return
+    }
+    if (!['department_admin', 'main_admin'].includes(profile?.role)) {
+      router.replace('/dashboard')
       return
     }
     const deptId = profile.role === 'department_admin' ? profile.departmentId : null
     Promise.all([getComplaints(deptId), getDepartments()])
       .then(([c, d]) => { setComplaints(c); setDepartments(d) })
       .finally(() => setLoading(false))
-  }, [user, profile, authLoading]) // eslint-disable-line
+  }, [user, profile, authLoading, isVerified, router])
 
   const handleSave = async (id) => {
     setSaving(true)

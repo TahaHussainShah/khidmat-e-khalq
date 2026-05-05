@@ -4,6 +4,19 @@
 
 This document is a step-by-step checklist for setting up, connecting, securing, and maintaining the Firebase Firestore database for the project.
 
+## Current Application State
+
+The app has already been refactored to use the following auth flow:
+
+- A single `/login` page handles both sign-in and registration.
+- Email/password accounts receive a verification email before entering protected areas.
+- Google sign-in is enabled and bypasses the email verification step.
+- Phone authentication and OTP logic have been removed from the codebase.
+- `/register` now redirects to `/login` for backward compatibility.
+- Middleware and page-level guards both block unverified users from `/dashboard`, `/report-issue`, and `/admin`.
+
+Use the checklist below to finish Firebase Console setup and verify the database side of the project.
+
 ---
 
 # 1. Firebase Project Setup
@@ -100,8 +113,8 @@ NEXT_PUBLIC_FIREBASE_APP_ID=1:123456789:web:abc123
 * [ ] Enable **Email/Password** sign-in provider
 * [ ] Enable **Google** sign-in provider
   * [ ] Add project support email
-* [ ] Enable **Phone** sign-in provider (for OTP)
-  * [ ] Note: Phone auth requires a real phone number in production
+* [ ] Disable **Phone** sign-in provider
+  * [ ] The current app no longer uses phone OTP or reCAPTCHA
 
 ## Step 7 — Configure Authorised Domains
 * [ ] Firebase Console → Authentication → Settings → Authorised domains
@@ -117,11 +130,13 @@ NEXT_PUBLIC_FIREBASE_APP_ID=1:123456789:web:abc123
 | `registerWithEmail()` | Email + Password   | [ ]    |
 | `loginWithEmail()`    | Email + Password   | [ ]    |
 | `loginWithGoogle()`   | Google OAuth popup | [ ]    |
-| `sendOTP()`           | Phone OTP          | [ ]    |
-| `setupRecaptcha()`    | Invisible reCAPTCHA| [ ]    |
+| `sendVerificationEmail()` | Email verification | [ ] |
+| `refreshCurrentUser()` | Firebase user reload | [ ] |
+| `syncAuthCookies()`   | Middleware cookies  | [ ]    |
+| `clearAuthCookies()`  | Middleware cookies  | [ ]    |
 | `logout()`            | All providers      | [ ]    |
-| `onAuthChange()`      | Auth state listener| [ ]    |
-| `getUserRole()`       | Firestore lookup   | [ ]    |
+| `useAuth()` / `onAuthStateChanged()` | Auth state listener | [ ] |
+| `getUserProfile()`    | Firestore lookup   | [ ]    |
 
 ---
 
@@ -347,7 +362,7 @@ All functions live in `lib/firestore.js`. Test each one in the running app:
 After the project is running and you have registered a user account:
 
 ### Method A — Via Seed Script (recommended)
-* [ ] Register normally at `/register`
+* [ ] Register normally at `/login` using the Register tab
 * [ ] Copy your UID from Firebase Console → Authentication → Users
 * [ ] Open `scripts/seedFirestore.js`
 * [ ] Uncomment the admin section and paste your UID:
@@ -469,7 +484,8 @@ Tips to reduce reads:
 | `auth/api-key-not-valid`                         | Wrong API key in env               | Re-copy config from Firebase Console             |
 | `auth/unauthorized-domain`                       | Domain not whitelisted             | Add domain in Firebase Auth → Settings → Authorised domains |
 | `Cannot read properties of null (reading 'uid')` | Using `user` before auth loads     | Check `loading` state from `useAuth()` before accessing `user` |
-| Phone OTP not sending                            | reCAPTCHA not rendering            | Ensure `<div id="recaptcha-container" />` is in DOM |
+| Email users stuck on `/verify-email`             | Verification link not clicked yet  | Open the email link, then use "I have verified my email" |
+| Google sign-in shows popup / redirect issues      | Google provider or domain setup incomplete | Enable Google provider and add the correct authorized domains |
 
 ---
 
@@ -478,6 +494,8 @@ Tips to reduce reads:
 Before going live on Vercel:
 
 * [ ] All 6 Firebase env vars added to Vercel environment settings
+* [ ] Firebase Authentication providers configured correctly: Email/Password and Google enabled, Phone disabled
+* [ ] Firebase Auth authorised domains include localhost and the production domain
 * [ ] Firestore rules deployed: `firebase deploy --only firestore:rules`
 * [ ] Firestore indexes deployed: `firebase deploy --only firestore:indexes`
 * [ ] Vercel domain added to Firebase Auth → Authorised domains

@@ -9,10 +9,10 @@ export default function Footer() {
           <span className="font-display text-brand-lime font-semibold">Khidmat e Khalq</span>
         </div>
         <p className="text-center text-xs text-gray-500">
-          Civic Issue Reporting Platform · Department of ADCS · Educational Project
+          Civic Issue Reporting Platform
         </p>
         <p className="text-xs text-gray-600">
-          Built with Next.js &amp; Firebase
+          Department of ADCS · Educational Project
         </p>
       </div>
     </footer>

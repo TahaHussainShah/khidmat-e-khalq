@@ -149,12 +149,12 @@ function AuthPageContent() {
 
   return (
     <div className="min-h-screen bg-brand-cream px-4 py-6 md:py-8">
-      <div className="mx-auto h-[calc(100vh-3rem)] w-full max-w-6xl overflow-hidden rounded-3xl border border-brand-mid/20 bg-white shadow-2xl md:h-[calc(100vh-4rem)]">
+      <div className="mx-auto h-auto w-full max-w-6xl overflow-y-auto rounded-3xl border border-brand-mid/20 bg-white shadow-2xl md:h-[calc(100vh-4rem)] md:overflow-hidden">
         <div className="grid h-full grid-cols-1 md:grid-cols-2">
           <motion.section
             layout
             transition={transition}
-            className={`${isLogin ? 'md:order-1' : 'md:order-2'} relative flex min-h-[38vh] items-center justify-center overflow-hidden bg-gradient-to-br from-brand-dark via-brand-mid to-brand-green px-8 py-12 md:min-h-0 md:px-12`}
+            className={`${isLogin ? 'md:order-1' : 'md:order-2'} relative flex min-h-[32vh] items-center justify-center overflow-hidden bg-gradient-to-br from-brand-dark via-brand-mid to-brand-green px-6 py-10 sm:px-8 md:min-h-0 md:px-12`}
           >
             <div className="pointer-events-none absolute -left-20 -top-16 h-56 w-56 rounded-full bg-brand-lime/15 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-16 -right-10 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
@@ -185,7 +185,7 @@ function AuthPageContent() {
           <motion.section
             layout
             transition={transition}
-            className={`${isLogin ? 'md:order-2' : 'md:order-1'} flex items-center justify-center px-6 py-8 sm:px-10 md:px-12`}
+            className={`${isLogin ? 'md:order-2' : 'md:order-1'} flex items-center justify-center px-6 py-8 pb-10 sm:px-10 md:px-12`}
           >
             <motion.div
               key={`form-${mode}`}

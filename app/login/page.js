@@ -1,7 +1,7 @@
 'use client'
 // app/login/page.js
 
-import { useEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
   loginWithEmail,
@@ -19,6 +19,24 @@ const INITIAL_FORM = {
 }
 
 export default function AuthPage() {
+  return (
+    <Suspense fallback={<AuthPageFallback />}>
+      <AuthPageContent />
+    </Suspense>
+  )
+}
+
+function AuthPageFallback() {
+  return (
+    <div className="min-h-screen bg-brand-cream flex items-center justify-center px-4 py-12">
+      <div className="card shadow-lg max-w-md w-full text-center py-14">
+        <p className="text-gray-500">Loading authentication…</p>
+      </div>
+    </div>
+  )
+}
+
+function AuthPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [mode, setMode] = useState('login')

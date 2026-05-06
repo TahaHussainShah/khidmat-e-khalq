@@ -1,12 +1,30 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import { auth } from '@/lib/firebase'
 import { refreshCurrentUser, sendVerificationEmail, syncAuthCookies } from '@/lib/auth'
 
 export default function VerifyEmailPage() {
+  return (
+    <Suspense fallback={<VerifyEmailPageFallback />}>
+      <VerifyEmailPageContent />
+    </Suspense>
+  )
+}
+
+function VerifyEmailPageFallback() {
+  return (
+    <div className="min-h-screen bg-brand-cream flex items-center justify-center px-4">
+      <div className="card shadow-lg max-w-md w-full text-center py-14">
+        <p className="text-gray-500">Loading verification status…</p>
+      </div>
+    </div>
+  )
+}
+
+function VerifyEmailPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, loading, isVerified } = useAuth()

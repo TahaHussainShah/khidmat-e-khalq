@@ -3,20 +3,11 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { useAuth } from '@/context/AuthContext'
 
-const FALLBACK_STATS = [
-  { label: 'Issues Reported', value: 2400 },
-  { label: 'Resolved',        value: 1890 },
-  { label: 'Departments',     value: 5 },
-  { label: 'Active Users',    value: 800 },
-]
-
-const numberFormatter = new Intl.NumberFormat('en-US')
-
-function formatStatValue(value, addPlus = false) {
-  const formatted = numberFormatter.format(value)
-  return addPlus ? `${formatted}+` : formatted
-}
+// Static fallbacks shown until real data loads
+const STATIC_DEPARTMENTS = 5
+const STATIC_USERS       = 800
 
 const CATEGORIES = [
   { icon: '🗑️', label: 'Garbage',           desc: 'Dump sites, overflowing bins' },
@@ -34,47 +25,42 @@ const HOW_IT_WORKS = [
   { step: '04', title: 'Track',        desc: 'Follow real-time status from your dashboard.' },
 ]
 
+// Format whole numbers with + suffix: 10, 25+, 100+
+function formatStat(value) {
+  if (value === 0) return '0'
+  // Round DOWN to nearest 10 and add +, e.g. 13 → "10+", 105 → "100+"
+  const magnitude = Math.pow(10, Math.floor(Math.log10(value)))
+  const floored   = Math.floor(value / magnitude) * magnitude
+  return floored === value ? `${value}` : `${floored}+`
+}
+
 export default function HomePage() {
-  const [stats, setStats] = useState(FALLBACK_STATS)
+  const { user, loading: authLoading } = useAuth()
+
+  // Only issues reported & resolved are dynamic; depts & users stay static
+  const [totalComplaints, setTotalComplaints] = useState(null)
+  const [totalResolved,   setTotalResolved]   = useState(null)
+  const [statsLoaded,     setStatsLoaded]     = useState(false)
 
   useEffect(() => {
     const controller = new AbortController()
 
     async function loadStats() {
       try {
-        const [complaintsRes, departmentsRes, usersRes] = await Promise.allSettled([
-          fetch('/api/complaints', { signal: controller.signal, cache: 'no-store' }),
-          fetch('/api/departments', { signal: controller.signal, cache: 'no-store' }),
-          fetch('/api/users', { signal: controller.signal, cache: 'no-store' }),
-        ])
-
-        const parseJson = async (result) => {
-          if (result.status !== 'fulfilled' || !result.value.ok) return null
-          return result.value.json()
-        }
-
-        const [complaintsJson, departmentsJson, usersJson] = await Promise.all([
-          parseJson(complaintsRes),
-          parseJson(departmentsRes),
-          parseJson(usersRes),
-        ])
-
-        const complaints = complaintsJson?.data
-        const departments = departmentsJson?.data
-        const users = usersJson?.data
-
-        const resolvedCount = Array.isArray(complaints)
-          ? complaints.filter(c => c.status === 'Resolved').length
-          : FALLBACK_STATS[1].value
-
-        setStats([
-          { label: 'Issues Reported', value: Array.isArray(complaints) ? complaints.length : FALLBACK_STATS[0].value },
-          { label: 'Resolved', value: resolvedCount },
-          { label: 'Departments', value: Array.isArray(departments) ? departments.length : FALLBACK_STATS[2].value },
-          { label: 'Active Users', value: Array.isArray(users) ? users.length : FALLBACK_STATS[3].value },
-        ])
-      } catch (error) {
-        // Keep fallback stats when API is unavailable.
+        const res = await fetch('/api/complaints', {
+          signal: controller.signal,
+          cache:  'no-store',
+        })
+        if (!res.ok) return
+        const json = await res.json()
+        const complaints = json?.data
+        if (!Array.isArray(complaints)) return
+        setTotalComplaints(complaints.length)
+        setTotalResolved(complaints.filter(c => c.status === 'Resolved').length)
+      } catch {
+        // keep nulls — UI falls back gracefully
+      } finally {
+        setStatsLoaded(true)
       }
     }
 
@@ -82,14 +68,37 @@ export default function HomePage() {
     return () => controller.abort()
   }, [])
 
+  // Smart CTA href: logged-in → report directly; guest → login first
+  const primaryCTA    = user ? '/report-issue' : '/login?from=/report-issue'
+  const secondaryCTA  = user ? '/report-issue' : '/login?from=/report-issue'
+
+  const stats = [
+    {
+      label: 'Issues Reported',
+      // Dynamic: show real count; while loading show skeleton dash
+      value: statsLoaded ? (totalComplaints !== null ? formatStat(totalComplaints) : '0') : '—',
+    },
+    {
+      label: 'Resolved',
+      value: statsLoaded ? (totalResolved !== null ? formatStat(totalResolved) : '0') : '—',
+    },
+    {
+      label: 'Departments',
+      value: String(STATIC_DEPARTMENTS), // always static
+    },
+    {
+      label: 'Active Users',
+      value: `${STATIC_USERS}+`,         // always static
+    },
+  ]
+
   return (
     <div className="overflow-hidden">
 
       {/* ── Hero ──────────────────────────────────────────────── */}
       <section className="relative bg-brand-dark text-white overflow-hidden">
-        {/* Background texture */}
         <div
-          className="absolute inset-0 opacity-10"
+          className="absolute inset-0 opacity-10 pointer-events-none"
           style={{
             backgroundImage: `radial-gradient(circle at 20% 50%, #4ade80 0%, transparent 50%),
                               radial-gradient(circle at 80% 20%, #d4a017 0%, transparent 40%)`,
@@ -110,13 +119,22 @@ export default function HomePage() {
             complaint directly to the responsible department — and keeps you updated until it is resolved.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/login" className="btn-primary text-base px-8 py-3">
+            {/* FIX: Smart CTA — goes to /report-issue if logged in, else /login */}
+            <Link href={primaryCTA} className="btn-primary text-base px-8 py-3">
               Report an Issue
             </Link>
             <Link href="/map" className="btn-secondary text-base px-8 py-3 !text-brand-lime !border-brand-lime">
               View Live Map
             </Link>
           </div>
+
+          {/* Subtle hint for guests */}
+          {!authLoading && !user && (
+            <p className="text-gray-500 text-xs mt-4">
+              Already have an account?{' '}
+              <Link href="/login" className="text-brand-lime hover:underline">Login here</Link>
+            </p>
+          )}
         </div>
       </section>
 
@@ -126,7 +144,7 @@ export default function HomePage() {
           {stats.map(s => (
             <div key={s.label}>
               <p className="font-display text-4xl font-bold text-white">
-                {formatStatValue(s.value, s.label !== 'Departments')}
+                {s.value}
               </p>
               <p className="text-green-100 text-sm mt-1">{s.label}</p>
             </div>
@@ -177,9 +195,15 @@ export default function HomePage() {
         <p className="text-gray-500 max-w-xl mx-auto mb-8">
           Your report reaches the right department instantly. Together we make our city better.
         </p>
-        <Link href="/login" className="btn-primary text-base px-10 py-3">
-          Get Started — It's Free
+        {/* FIX: Smart CTA — logged-in goes to report, guest goes to login */}
+        <Link href={secondaryCTA} className="btn-primary text-base px-10 py-3">
+          {user ? 'Report an Issue →' : 'Get Started — It\'s Free'}
         </Link>
+        {!authLoading && !user && (
+          <p className="text-gray-400 text-xs mt-4">
+            Free to use · No ads · Your data stays private
+          </p>
+        )}
       </section>
     </div>
   )

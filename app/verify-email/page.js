@@ -146,6 +146,14 @@ function friendlyError(code) {
     'auth/too-many-requests': 'Too many attempts. Please wait a moment.',
     'auth/invalid-action-code': 'That verification link is no longer valid.',
     'auth/network-request-failed': 'Network error. Please try again.',
+    'auth/user-not-found': 'No account found with this email.',
+    'auth/wrong-password': 'Incorrect password. Please try again.',
+    'auth/invalid-email': 'Please enter a valid email address.',
+    'auth/popup-closed-by-user': 'Google sign-in was cancelled.',
+    'auth/email-already-in-use': 'An account with this email already exists.',
+    'auth/weak-password': 'Password must be at least 6 characters.',
+    'auth/invalid-credential': 'Invalid email or password.',
+    'auth/invalid-login-credentials': 'Invalid email or password.',
   }
 
   return map[code] || 'Something went wrong. Please try again.'

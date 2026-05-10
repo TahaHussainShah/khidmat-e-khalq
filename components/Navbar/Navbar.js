@@ -13,7 +13,7 @@ import { useAuth } from '@/context/AuthContext'
 import { logout } from '@/lib/auth'
 
 export default function Navbar() {
-  const { user, profile, loading } = useAuth()
+  const { user, profile } = useAuth()
   const [menuOpen,     setMenuOpen]     = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const pathname    = usePathname()
@@ -67,20 +67,9 @@ export default function Navbar() {
           <div className="hidden md:flex items-center gap-5 lg:gap-6">
             <NavLink href="/"    current={pathname}>Home</NavLink>
             <NavLink href="/map" current={pathname}>Map</NavLink>
+            <NavLink href="/report-issue" current={pathname}>Report Issue</NavLink>
 
-            {user && (
-              <>
-                <NavLink href="/report-issue" current={pathname}>Report Issue</NavLink>
-                <NavLink href="/dashboard"    current={pathname}>My Complaints</NavLink>
-              </>
-            )}
-
-            {(role === 'department_admin' || role === 'main_admin') && (
-              <NavLink href="/admin" current={pathname}>Admin</NavLink>
-            )}
-
-            {/* FIX: label is just "Login" */}
-            {!loading && !user && (
+            {!user && (
               <Link href="/login" className="btn-primary text-sm py-2 whitespace-nowrap">
                 Login
               </Link>
@@ -155,16 +144,7 @@ export default function Navbar() {
         <div className="md:hidden bg-brand-mid border-t border-brand-dark px-4 py-3 space-y-1">
           <MobileLink href="/"    label="🏠 Home" close={() => setMenuOpen(false)} active={pathname === '/'} />
           <MobileLink href="/map" label="🗺️ Map"   close={() => setMenuOpen(false)} active={pathname === '/map'} />
-          {user && (
-            <>
-              <MobileLink href="/report-issue" label="📝 Report Issue"  close={() => setMenuOpen(false)} active={pathname === '/report-issue'} />
-              <MobileLink href="/dashboard"    label="📋 My Complaints" close={() => setMenuOpen(false)} active={pathname === '/dashboard'} />
-            </>
-          )}
-          {(role === 'department_admin' || role === 'main_admin') && (
-            <MobileLink href="/admin" label="⚙️ Admin Panel" close={() => setMenuOpen(false)} active={pathname.startsWith('/admin')} />
-          )}
-          {/* FIX: label is just "Login" */}
+          <MobileLink href="/report-issue" label="📝 Report Issue" close={() => setMenuOpen(false)} active={pathname === '/report-issue'} />
           {!user && (
             <MobileLink href="/login" label="🔑 Login" close={() => setMenuOpen(false)} active={pathname === '/login'} />
           )}
@@ -181,6 +161,10 @@ export default function Navbar() {
                   {role && <p className="text-xs text-brand-lime capitalize">{role.replace(/_/g, ' ')}</p>}
                 </div>
               </div>
+              <MobileLink href="/dashboard" label="📋 My Complaints" close={() => setMenuOpen(false)} active={pathname === '/dashboard'} />
+              {(role === 'department_admin' || role === 'main_admin') && (
+                <MobileLink href="/admin" label="⚙️ Admin Dashboard" close={() => setMenuOpen(false)} active={pathname.startsWith('/admin')} />
+              )}
               <button
                 onClick={handleLogout}
                 className="w-full text-left text-red-400 text-sm py-2 px-2 hover:text-red-300 transition-colors"

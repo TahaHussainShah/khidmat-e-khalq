@@ -37,9 +37,11 @@ export default function MapSelector({ value, onChange, readOnly = false, complai
   const [outOfBounds,    setOutOfBounds]    = useState(false)
 
   useEffect(() => {
+    let isActive = true
     if (typeof window === 'undefined') return
 
     import('leaflet').then((L) => {
+      if (!isActive) return
       delete L.default.Icon.Default.prototype._getIconUrl
       L.default.Icon.Default.mergeOptions({
         iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
@@ -75,6 +77,7 @@ export default function MapSelector({ value, onChange, readOnly = false, complai
 
       // Place existing pin
       if (value?.lat && value?.lng) {
+        if (!isActive || instanceRef.current !== map) return
         markerRef.current = L.default.marker([value.lat, value.lng]).addTo(map)
         setLocationStatus('detected')
       } else if (!readOnly) {
@@ -82,6 +85,7 @@ export default function MapSelector({ value, onChange, readOnly = false, complai
         if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(
             ({ coords: { latitude, longitude } }) => {
+              if (!isActive || instanceRef.current !== map) return
               // FIX: If GPS is outside Pakistan, fall back to Rawalpindi
               if (!isInPakistan(latitude, longitude)) {
                 map.setView(DEFAULT_CENTER, 12)
@@ -106,6 +110,7 @@ export default function MapSelector({ value, onChange, readOnly = false, complai
       if (complaints.length > 0) {
         const STATUS_COLORS = { 'Pending': '#ef4444', 'In Progress': '#f97316', 'Resolved': '#22c55e' }
         complaints.forEach(c => {
+          if (!isActive || instanceRef.current !== map) return
           if (!c.location?.lat || !c.location?.lng) return
           const color = STATUS_COLORS[c.status] || '#3b82f6'
           const icon  = L.default.divIcon({
@@ -126,6 +131,7 @@ export default function MapSelector({ value, onChange, readOnly = false, complai
       // Click to place pin — only in edit mode, only inside Pakistan
       if (!readOnly) {
         map.on('click', (e) => {
+          if (!isActive || instanceRef.current !== map) return
           const { lat, lng } = e.latlng
 
           // FIX: Reject clicks outside Pakistan
@@ -146,6 +152,7 @@ export default function MapSelector({ value, onChange, readOnly = false, complai
     })
 
     return () => {
+      isActive = false
       if (instanceRef.current) {
         instanceRef.current.remove()
         instanceRef.current = null

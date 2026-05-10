@@ -27,11 +27,8 @@ const HOW_IT_WORKS = [
 
 // Format whole numbers with + suffix: 10, 25+, 100+
 function formatStat(value) {
-  if (value === 0) return '0'
-  // Round DOWN to nearest 10 and add +, e.g. 13 → "10+", 105 → "100+"
-  const magnitude = Math.pow(10, Math.floor(Math.log10(value)))
-  const floored   = Math.floor(value / magnitude) * magnitude
-  return floored === value ? `${value}` : `${floored}+`
+  if (value <= 0) return '0'
+  return `${Math.floor(value)}+`
 }
 
 export default function HomePage() {
